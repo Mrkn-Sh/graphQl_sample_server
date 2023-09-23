@@ -1,6 +1,10 @@
-const { ApolloServer, gql } = require("apollo-server");
+const express = require('express');
+const { ApolloServer, gql } = require("apollo-server-express");
+const expressPlayground = require('graphql-playground-middleware-express').default;
 const fetch = require("node-fetch");
-let countries = []; 
+const fs = require('fs');
+
+let countries = JSON.parse(fs.readFileSync('data.json', 'utf-8')); 
 
 const typeDefs = gql`
   type Country {
@@ -138,6 +142,7 @@ const resolvers = {
         ...args
     };
       countries.push(newCountry);
+      saveCountries();
       return newCountry;
     },
 
@@ -149,7 +154,7 @@ const resolvers = {
         country.name = name;
       }
 
-      // 기타 업데이트 로직 추가 가능
+      saveCountries();
       return country;
     },
 
@@ -158,16 +163,34 @@ const resolvers = {
       if (countryIndex === -1) throw new Error('Country not found');
 
       countries.splice(countryIndex, 1);
+      saveCountries();
       return true;  
     },
   },
 };
 
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-});
+function saveCountries() {
+  fs.writeFileSync('data.json', JSON.stringify(countries, null, 2));
+}
 
-server.listen().then(({ url }) => {
-  console.log(`🚀 Server ready at ${url}`);
-});
+const startServer = async () => {
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers,
+    introspection: true,
+  });
+
+  await server.start();
+
+  const app = express();
+  
+   app.get('/graphql', expressPlayground({ endpoint: '/graphql' }));
+  
+  server.applyMiddleware({ app });
+
+  app.listen({ port: 4000 }, () => {
+    console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`);
+  });
+}
+
+startServer();
