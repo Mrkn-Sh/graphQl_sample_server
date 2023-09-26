@@ -4,7 +4,9 @@ const expressPlayground = require('graphql-playground-middleware-express').defau
 const fetch = require("node-fetch");
 const fs = require('fs');
 
-let countries = JSON.parse(fs.readFileSync('data.json', 'utf-8')); 
+const jsonData = JSON.parse(fs.readFileSync('data.json', 'utf-8'));
+const countries = jsonData.data.countries;
+
 
 const typeDefs = gql`
   type Country {
@@ -43,6 +45,7 @@ const typeDefs = gql`
 
   type Query {
     countries: [Country]
+    country(code: String!): Country
   }
 
   input StateInput {
@@ -87,54 +90,57 @@ const typeDefs = gql`
 `;
 
 const resolvers = {
-  Query: {
-    countries: async () => {
-      const response = await fetch("https://countries.trevorblades.com/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: `
-            {
-              countries {
-                code
-                name
-                emoji
-                phone
-                emojiU
-                native
-                phones
-                states {
-                  code
-                }
-                capital
-                currency
-                awsRegion
-                continent {
-                  code
-                  name
-                  countries {
-                    capital
-                    currency
-                  }
-                }
-                currencies
-                languages {
-                  rtl
-                  code
-                  name
-                  native
-                }
-              }
-            }
-          `,
-        }),
-      });
+//   Query: {
+    // countries: async () => {
+    //   const response = await fetch("https://countries.trevorblades.com/", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //     },
+    //     body: JSON.stringify({
+    //       query: `
+    //         {
+    //           countries {
+    //             code
+    //             name
+    //             emoji
+    //             phone
+    //             emojiU
+    //             native
+    //             phones
+    //             states {
+    //               code
+    //             }
+    //             capital
+    //             currency
+    //             awsRegion
+    //             continent {
+    //               code
+    //               name
+    //               countries {
+    //                 capital
+    //                 currency
+    //               }
+    //             }
+    //             currencies
+    //             languages {
+    //               rtl
+    //               code
+    //               name
+    //               native
+    //             }
+    //           }
+    //         }
+    //       `,
+    //     }),
+    //   });
 
-      const data = await response.json();
-      return data.data.countries;
-    },
+    //   const data = await response.json();
+    //   return data.data.countries;
+    // },
+  Query: {
+    countries: () => countries,
+    country: (_, { code }) => countries.find((c) => c.code === code),
   },
   Mutation: {
     addCountry: (_, args) => {
@@ -171,6 +177,7 @@ const resolvers = {
 
 function saveCountries() {
   fs.writeFileSync('data.json', JSON.stringify(countries, null, 2));
+  console.log('Countries saved:', countries);
 }
 
 const startServer = async () => {
